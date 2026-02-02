@@ -1,0 +1,514 @@
+import React, { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import axios from 'axios';
+import './App.css';
+
+function App() {
+  const [formData, setFormData] = useState({
+    age: '',
+    role: 'Batsman',
+    country: 'India',
+    batting_style: 'Right-Hand',
+    bowling_style: 'Right-Arm Fast',
+    domestic_matches: '',
+    innings_batted: '',
+    runs_scored: '',
+    batting_average: '',
+    batting_strike_rate: '',
+    hundreds: '',
+    fifties: '',
+    highest_score: '',
+    boundary_percentage: '',
+    overs_bowled: '',
+    wickets_taken: '',
+    bowling_average: '',
+    economy_rate: '',
+    bowling_strike_rate: '',
+    five_wicket_hauls: '',
+    best_bowling_wickets: '',
+    dot_ball_percentage: '',
+    catches: '',
+    stumpings: '',
+    consistency_rating: '',
+    fitness_score: '',
+    experience_factor: '',
+    recent_form_rating: '',
+    match_winning_performances: '',
+    pressure_handling_score: ''
+  });
+
+  const [prediction, setPrediction] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [stats, setStats] = useState(null);
+  const [activeTab, setActiveTab] = useState('batting');
+  const [errors, setErrors] = useState({});
+
+  useEffect(() => {
+    fetchStats();
+  }, []);
+
+  const fetchStats = async () => {
+    try {
+      const response = await axios.get('/api/dataset-stats');
+      if (response.data.success) {
+        setStats(response.data.stats);
+      }
+    } catch (error) {
+      console.error('Error fetching stats:', error);
+    }
+  };
+
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
+    // Clear error for this field when user starts typing
+    if (errors[name]) {
+      setErrors(prev => ({ ...prev, [name]: '' }));
+    }
+  };
+
+  const validateForm = () => {
+    const newErrors = {};
+    const requiredFields = [
+      'age', 'domestic_matches', 'innings_batted', 'runs_scored',
+      'batting_average', 'batting_strike_rate', 'hundreds', 'fifties',
+      'highest_score', 'boundary_percentage', 'overs_bowled', 'wickets_taken',
+      'bowling_average', 'economy_rate', 'bowling_strike_rate',
+      'five_wicket_hauls', 'best_bowling_wickets', 'dot_ball_percentage',
+      'catches', 'stumpings', 'consistency_rating', 'fitness_score',
+      'experience_factor', 'recent_form_rating', 'match_winning_performances',
+      'pressure_handling_score'
+    ];
+
+    requiredFields.forEach(field => {
+      if (!formData[field] || formData[field] === '') {
+        newErrors[field] = 'This field is required';
+      }
+    });
+
+    // Additional validation
+    if (formData.age && (formData.age < 18 || formData.age > 40)) {
+      newErrors.age = 'Age must be between 18 and 40';
+    }
+
+    const percentageFields = ['boundary_percentage', 'dot_ball_percentage', 'consistency_rating', 'fitness_score', 'experience_factor', 'recent_form_rating', 'pressure_handling_score'];
+    percentageFields.forEach(field => {
+      if (formData[field] && (formData[field] < 0 || formData[field] > 100)) {
+        newErrors[field] = 'Must be between 0 and 100';
+      }
+    });
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    
+    // Validate form
+    if (!validateForm()) {
+      // Scroll to first error
+      const firstErrorField = Object.keys(errors)[0];
+      const element = document.querySelector(`[name="${firstErrorField}"]`);
+      if (element) {
+        element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        element.focus();
+      }
+      return;
+    }
+
+    setLoading(true);
+    setPrediction(null);
+
+    try {
+      const response = await axios.post('/api/predict', formData);
+      if (response.data.success) {
+        setPrediction(response.data.prediction);
+      }
+    } catch (error) {
+      const errorMessage = error.response?.data?.error || error.message;
+      alert('Error making prediction: ' + errorMessage);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const roles = ['Batsman', 'Bowler', 'All-Rounder', 'Wicket-Keeper'];
+  const countries = ['India', 'Australia', 'England', 'South Africa', 'New Zealand', 'West Indies', 'Pakistan', 'Sri Lanka', 'Bangladesh', 'Afghanistan'];
+  const battingStyles = ['Right-Hand', 'Left-Hand'];
+  const bowlingStyles = ['Right-Arm Fast', 'Left-Arm Fast', 'Right-Arm Medium', 'Left-Arm Medium', 'Right-Arm Spin', 'Left-Arm Spin', 'Leg-Spin', 'Off-Spin'];
+
+  return (
+    <div className="app">
+      <div className="bg-pattern"></div>
+      
+      <motion.header 
+        className="header"
+        initial={{ y: -100, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        transition={{ duration: 0.6 }}
+      >
+        <div className="header-content">
+          <motion.h1 
+            className="title"
+            initial={{ scale: 0.8 }}
+            animate={{ scale: 1 }}
+            transition={{ delay: 0.2, duration: 0.5 }}
+          >
+            IPL AUCTION PREDICTOR
+          </motion.h1>
+          <motion.p 
+            className="subtitle"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.4 }}
+          >
+            Powered by Naive Bayes Algorithm
+          </motion.p>
+        </div>
+      </motion.header>
+
+      {stats && (
+        <motion.div 
+          className="stats-bar"
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.6 }}
+        >
+          <div className="stat-item">
+            <span className="stat-label">Total Players</span>
+            <span className="stat-value">{stats.total_players.toLocaleString()}</span>
+          </div>
+          <div className="stat-item">
+            <span className="stat-label">Avg Price</span>
+            <span className="stat-value">₹{stats.avg_price}L</span>
+          </div>
+          <div className="stat-item">
+            <span className="stat-label">Max Price</span>
+            <span className="stat-value">₹{stats.max_price}L</span>
+          </div>
+          <div className="stat-item">
+            <span className="stat-label">Avg Age</span>
+            <span className="stat-value">{stats.avg_age}</span>
+          </div>
+        </motion.div>
+      )}
+
+      <div className="main-content">
+        <motion.div 
+          className="form-container"
+          initial={{ opacity: 0, x: -50 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ delay: 0.3, duration: 0.6 }}
+        >
+          <form onSubmit={handleSubmit}>
+            <div className="form-section">
+              <h2 className="section-title">Basic Information</h2>
+              <div className="form-grid">
+                <div className="form-group">
+                  <label>Age</label>
+                  <input
+                    type="number"
+                    name="age"
+                    value={formData.age}
+                    onChange={handleInputChange}
+                    required
+                    min="18"
+                    max="40"
+                    className={errors.age ? 'error' : ''}
+                  />
+                  {errors.age && <span className="error-message">{errors.age}</span>}
+                </div>
+                <div className="form-group">
+                  <label>Role</label>
+                  <select name="role" value={formData.role} onChange={handleInputChange}>
+                    {roles.map(role => <option key={role} value={role}>{role}</option>)}
+                  </select>
+                </div>
+                <div className="form-group">
+                  <label>Country</label>
+                  <select name="country" value={formData.country} onChange={handleInputChange}>
+                    {countries.map(country => <option key={country} value={country}>{country}</option>)}
+                  </select>
+                </div>
+                <div className="form-group">
+                  <label>Batting Style</label>
+                  <select name="batting_style" value={formData.batting_style} onChange={handleInputChange}>
+                    {battingStyles.map(style => <option key={style} value={style}>{style}</option>)}
+                  </select>
+                </div>
+                <div className="form-group">
+                  <label>Bowling Style</label>
+                  <select name="bowling_style" value={formData.bowling_style} onChange={handleInputChange}>
+                    {bowlingStyles.map(style => <option key={style} value={style}>{style}</option>)}
+                  </select>
+                </div>
+                <div className="form-group">
+                  <label>Domestic Matches</label>
+                  <input
+                    type="number"
+                    name="domestic_matches"
+                    value={formData.domestic_matches}
+                    onChange={handleInputChange}
+                    required
+                    min="0"
+                    className={errors.domestic_matches ? 'error' : ''}
+                  />
+                  {errors.domestic_matches && <span className="error-message">{errors.domestic_matches}</span>}
+                </div>
+              </div>
+            </div>
+
+            <div className="tabs">
+              <button
+                type="button"
+                className={`tab ${activeTab === 'batting' ? 'active' : ''}`}
+                onClick={() => setActiveTab('batting')}
+              >
+                Batting Stats
+              </button>
+              <button
+                type="button"
+                className={`tab ${activeTab === 'bowling' ? 'active' : ''}`}
+                onClick={() => setActiveTab('bowling')}
+              >
+                Bowling Stats
+              </button>
+              <button
+                type="button"
+                className={`tab ${activeTab === 'fielding' ? 'active' : ''}`}
+                onClick={() => setActiveTab('fielding')}
+              >
+                Fielding & Performance
+              </button>
+            </div>
+
+            <AnimatePresence mode="wait">
+              {activeTab === 'batting' && (
+                <motion.div
+                  key="batting"
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -20 }}
+                  transition={{ duration: 0.3 }}
+                  className="form-section"
+                >
+                  <h2 className="section-title">Batting Statistics</h2>
+                  <div className="form-grid">
+                    <div className="form-group">
+                      <label>Innings Batted</label>
+                      <input type="number" name="innings_batted" value={formData.innings_batted} onChange={handleInputChange} required min="0" />
+                    </div>
+                    <div className="form-group">
+                      <label>Runs Scored</label>
+                      <input type="number" name="runs_scored" value={formData.runs_scored} onChange={handleInputChange} required min="0" />
+                    </div>
+                    <div className="form-group">
+                      <label>Batting Average</label>
+                      <input type="number" step="0.01" name="batting_average" value={formData.batting_average} onChange={handleInputChange} required min="0" />
+                    </div>
+                    <div className="form-group">
+                      <label>Strike Rate</label>
+                      <input type="number" step="0.01" name="batting_strike_rate" value={formData.batting_strike_rate} onChange={handleInputChange} required min="0" />
+                    </div>
+                    <div className="form-group">
+                      <label>Hundreds</label>
+                      <input type="number" name="hundreds" value={formData.hundreds} onChange={handleInputChange} required min="0" />
+                    </div>
+                    <div className="form-group">
+                      <label>Fifties</label>
+                      <input type="number" name="fifties" value={formData.fifties} onChange={handleInputChange} required min="0" />
+                    </div>
+                    <div className="form-group">
+                      <label>Highest Score</label>
+                      <input type="number" name="highest_score" value={formData.highest_score} onChange={handleInputChange} required min="0" />
+                    </div>
+                    <div className="form-group">
+                      <label>Boundary %</label>
+                      <input type="number" step="0.01" name="boundary_percentage" value={formData.boundary_percentage} onChange={handleInputChange} required min="0" max="100" />
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+
+              {activeTab === 'bowling' && (
+                <motion.div
+                  key="bowling"
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -20 }}
+                  transition={{ duration: 0.3 }}
+                  className="form-section"
+                >
+                  <h2 className="section-title">Bowling Statistics</h2>
+                  <div className="form-grid">
+                    <div className="form-group">
+                      <label>Overs Bowled</label>
+                      <input type="number" step="0.1" name="overs_bowled" value={formData.overs_bowled} onChange={handleInputChange} required min="0" />
+                    </div>
+                    <div className="form-group">
+                      <label>Wickets Taken</label>
+                      <input type="number" name="wickets_taken" value={formData.wickets_taken} onChange={handleInputChange} required min="0" />
+                    </div>
+                    <div className="form-group">
+                      <label>Bowling Average</label>
+                      <input type="number" step="0.01" name="bowling_average" value={formData.bowling_average} onChange={handleInputChange} required min="0" />
+                    </div>
+                    <div className="form-group">
+                      <label>Economy Rate</label>
+                      <input type="number" step="0.01" name="economy_rate" value={formData.economy_rate} onChange={handleInputChange} required min="0" />
+                    </div>
+                    <div className="form-group">
+                      <label>Bowling Strike Rate</label>
+                      <input type="number" step="0.01" name="bowling_strike_rate" value={formData.bowling_strike_rate} onChange={handleInputChange} required min="0" />
+                    </div>
+                    <div className="form-group">
+                      <label>5-Wicket Hauls</label>
+                      <input type="number" name="five_wicket_hauls" value={formData.five_wicket_hauls} onChange={handleInputChange} required min="0" />
+                    </div>
+                    <div className="form-group">
+                      <label>Best Bowling</label>
+                      <input type="number" name="best_bowling_wickets" value={formData.best_bowling_wickets} onChange={handleInputChange} required min="0" max="10" />
+                    </div>
+                    <div className="form-group">
+                      <label>Dot Ball %</label>
+                      <input type="number" step="0.01" name="dot_ball_percentage" value={formData.dot_ball_percentage} onChange={handleInputChange} required min="0" max="100" />
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+
+              {activeTab === 'fielding' && (
+                <motion.div
+                  key="fielding"
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -20 }}
+                  transition={{ duration: 0.3 }}
+                  className="form-section"
+                >
+                  <h2 className="section-title">Fielding & Performance Metrics</h2>
+                  <div className="form-grid">
+                    <div className="form-group">
+                      <label>Catches</label>
+                      <input type="number" name="catches" value={formData.catches} onChange={handleInputChange} required min="0" />
+                    </div>
+                    <div className="form-group">
+                      <label>Stumpings</label>
+                      <input type="number" name="stumpings" value={formData.stumpings} onChange={handleInputChange} required min="0" />
+                    </div>
+                    <div className="form-group">
+                      <label>Consistency Rating (0-100)</label>
+                      <input type="number" step="0.01" name="consistency_rating" value={formData.consistency_rating} onChange={handleInputChange} required min="0" max="100" />
+                    </div>
+                    <div className="form-group">
+                      <label>Fitness Score (0-100)</label>
+                      <input type="number" step="0.01" name="fitness_score" value={formData.fitness_score} onChange={handleInputChange} required min="0" max="100" />
+                    </div>
+                    <div className="form-group">
+                      <label>Experience Factor (0-100)</label>
+                      <input type="number" step="0.01" name="experience_factor" value={formData.experience_factor} onChange={handleInputChange} required min="0" max="100" />
+                    </div>
+                    <div className="form-group">
+                      <label>Recent Form (0-100)</label>
+                      <input type="number" step="0.01" name="recent_form_rating" value={formData.recent_form_rating} onChange={handleInputChange} required min="0" max="100" />
+                    </div>
+                    <div className="form-group">
+                      <label>Match-Winning Performances</label>
+                      <input type="number" name="match_winning_performances" value={formData.match_winning_performances} onChange={handleInputChange} required min="0" />
+                    </div>
+                    <div className="form-group">
+                      <label>Pressure Handling (0-100)</label>
+                      <input type="number" step="0.01" name="pressure_handling_score" value={formData.pressure_handling_score} onChange={handleInputChange} required min="0" max="100" />
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            <motion.button
+              type="submit"
+              className="predict-btn"
+              disabled={loading}
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+            >
+              {loading ? (
+                <span className="loading">
+                  <span className="spinner"></span> Predicting...
+                </span>
+              ) : (
+                'PREDICT AUCTION PRICE'
+              )}
+            </motion.button>
+          </form>
+        </motion.div>
+
+        <AnimatePresence>
+          {prediction && (
+            <motion.div
+              className="prediction-container"
+              initial={{ opacity: 0, scale: 0.8, y: 50 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.8, y: 50 }}
+              transition={{ duration: 0.5, type: "spring" }}
+            >
+              <div className="prediction-card">
+                <motion.div
+                  className="trophy-icon"
+                  initial={{ rotate: -180, scale: 0 }}
+                  animate={{ rotate: 0, scale: 1 }}
+                  transition={{ delay: 0.2, duration: 0.6, type: "spring" }}
+                >
+                  🏆
+                </motion.div>
+                <h2 className="prediction-title">Predicted Auction Price</h2>
+                <motion.div
+                  className="price-display"
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1 }}
+                  transition={{ delay: 0.4, type: "spring", stiffness: 200 }}
+                >
+                  <span className="currency">₹</span>
+                  <span className="amount">{prediction.predicted_price}</span>
+                  <span className="unit">LAKHS</span>
+                </motion.div>
+                <div className="prediction-details">
+                  <div className="detail-item">
+                    <span className="detail-label">Confidence</span>
+                    <div className="confidence-bar">
+                      <motion.div
+                        className="confidence-fill"
+                        initial={{ width: 0 }}
+                        animate={{ width: `${prediction.confidence}%` }}
+                        transition={{ delay: 0.6, duration: 0.8 }}
+                      />
+                      <span className="confidence-text">{prediction.confidence}%</span>
+                    </div>
+                  </div>
+                  <div className="detail-item">
+                    <span className="detail-label">Price Range</span>
+                    <span className="detail-value">
+                      ₹{prediction.price_range.min}L - ₹{prediction.price_range.max}L
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+
+      <motion.footer
+        className="footer"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 1 }}
+      >
+        <p>Trained on 50,000+ synthetic player records | Naive Bayes Classification</p>
+      </motion.footer>
+    </div>
+  );
+}
+
+export default App;
