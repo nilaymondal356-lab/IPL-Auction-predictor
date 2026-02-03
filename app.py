@@ -131,11 +131,14 @@ def serve(path):
         return send_from_directory(app.static_folder, 'index.html')
 
 if __name__ == '__main__':
+    # Get port from environment variable (for deployment platforms like Render)
+    port = int(os.environ.get('PORT', 5000))
+    
     # Run on localhost
     print("="*60)
     print("IPL Auction Price Predictor - Backend Server")
     print("="*60)
-    print("Server running on: http://localhost:5000")
+    print(f"Server running on: http://0.0.0.0:{port}")
     print("API Endpoints:")
     print("  - GET  /api/health         : Health check")
     print("  - POST /api/predict        : Predict player price")
@@ -143,4 +146,4 @@ if __name__ == '__main__':
     print("  - GET  /api/sample-players : Get sample players")
     print("="*60)
     
-    app.run(debug=True, host='0.0.0.0', port=5000)
+    app.run(debug=False, host='0.0.0.0', port=port)
